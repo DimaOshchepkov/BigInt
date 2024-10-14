@@ -1,83 +1,55 @@
-﻿#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <ranges>
-#include <string>
+﻿#include "BigInt.h"
+#include <iomanip>
 
 using std::uint64_t;
 
-class BigInt {
-public:
-    BigInt(); // Конструктор по умолчанию
-    BigInt(uint64_t count); // Конструктор из uint64_t
-    BigInt(const std::string& str); // Конструктор из строки
-    BigInt(const BigInt& other); // Конструктор копирования
-    BigInt(BigInt&& other);
-
-    bool less_by_module(const BigInt& other) const;
-
-    // Базовые операции
-    BigInt operator+(const BigInt& other) const;
-    BigInt operator-(const BigInt& other) const;
-    BigInt operator*(const BigInt& other) const;
-    BigInt operator/(const BigInt& other) const;
-    BigInt operator%(const BigInt& other) const;
-
-    BigInt operator-() const;
-
-    // Присваивание
-    BigInt& operator=(const BigInt& other);
-    BigInt& operator=(BigInt&& other);
-
-
-    // Сравнение
-    bool operator==(const BigInt& other) const;
-    bool operator!=(const BigInt& other) const;
-    bool operator<(const BigInt& other) const;
-    bool operator>(const BigInt& other) const;
-    bool operator<=(const BigInt& other) const;
-    bool operator>=(const BigInt& other) const;
-
-    // Ввод/вывод
-    friend std::ostream& operator<<(std::ostream& os, const BigInt& num);
-    friend std::istream& operator>>(std::istream& is, BigInt& num);
-
-private:
-    BigInt diff_from_greater_to_less(const BigInt& other) const;
-    uint64_t extract_number(std::string_view number, int pos, int count);
-
-    std::vector<uint64_t> digits; // Вектор для хранения чисел
-    bool sign; // Знак числа (true - положительное, false - отрицательное)
-    int COUNT_ZERO_IN_CELL = 9;
-    uint64_t BASE;
-    // Вспомогательные функции
-    void removeLeadingZeros();
-    BigInt abs() const;
-};
 
 // Реализация конструкторов
-BigInt::BigInt() : sign(true) {}
+BigInt::BigInt() : sign(true), digits(1, 0) {}
 
-BigInt::BigInt(uint64_t count): sign(true), digits(count) {
+
+BigInt::BigInt(int64_t l) {
     BASE = (uint64_t)std::pow(10, COUNT_ZERO_IN_CELL);
+    if (l < 0) { this->sign = false; l = -l; }
+    else this->sign = true;
+    do {
+        this->digits.push_back(l % BigInt::BASE);
+        l /= BigInt::BASE;
+    } while (l != 0);
 }
 
-
-BigInt::BigInt(const std::string& str) {
+BigInt::BigInt(uint64_t l) {
     BASE = (uint64_t)std::pow(10, COUNT_ZERO_IN_CELL);
-    sign = true;
-    uint64_t start = 0ull;
-    if (!str.empty() && (str[0] == '-' || str[0] == '+')) {
-        sign = (str[0] == '+');
-        start = 1;
+    this->sign = true;
+    do {
+        this->digits.push_back(l % BigInt::BASE);
+        l /= BigInt::BASE;
+    } while (l != 0);
+}
+
+BigInt::BigInt(std::string_view str) {
+    BASE = (uint64_t)std::pow(10, COUNT_ZERO_IN_CELL);
+    if (str.length() == 0) {
+        this->sign = true;
     }
     else {
-        for (uint64_t i = std::max(start, str.size() - 1 - COUNT_ZERO_IN_CELL);
-            i >= start; i -= COUNT_ZERO_IN_CELL) {
-            digits.push_back(extract_number(str, i, COUNT_ZERO_IN_CELL));
+        if (str[0] == '-') {
+            str = str.substr(1);
+            this->sign = false;
         }
+        else {
+            this->sign = true;
+        }
+
+        for (long long i = str.length(); i >= 0; i -= COUNT_ZERO_IN_CELL) {
+            if (i < COUNT_ZERO_IN_CELL)
+                this->digits.push_back(std::stoi(std::string(str.substr(0, i))));
+            else
+                this->digits.push_back(std::stoi(std::string(str.substr(i - COUNT_ZERO_IN_CELL, COUNT_ZERO_IN_CELL))));
+        }
+
+        this->removeLeadingZeros();
     }
-    removeLeadingZeros();
 }
 
 BigInt::BigInt(const BigInt& other) : digits(other.digits), sign(other.sign) 
@@ -139,10 +111,11 @@ uint64_t BigInt::extract_number(std::string_view number, int pos, int count) {
 BigInt BigInt::operator+(const BigInt& other) const {
     if (sign == other.sign) { // Если знаки одинаковые
         auto maxSize = std::max(digits.size(), other.digits.size()) + 1;
-        BigInt result(maxSize);
-        for (int i = 0; i <  maxSize; i++) {
+        BigInt result;
+        result.digits.resize(maxSize);
+        for (int i = 0; i <  maxSize - 1; i++) {
             result.digits[i] = this->digits[i] + other.digits[i];
-            result.digits[i + 1] += result.digits[i] % BASE;
+            result.digits[i + 1] += result.digits[i] / BASE;
             result.digits[i] %= BASE;
         }
         if (result.digits.back() == 0) {
@@ -189,40 +162,17 @@ BigInt BigInt::operator*(const BigInt& other) const {
     return res;
 }
 
-BigInt BigInt::operator/(const BigInt& other) const {
-    if (other == BigInt(0)) {
-        throw std::runtime_error("Division by zero");
-    }
-    BigInt dividend = abs();
-    BigInt divisor = other.abs();
-    BigInt quotient;
-    BigInt remainder;
 
-    for (uint64_t i = dividend.digits.size() - 1; i >= 0; --i) {
-        remainder.digits.insert(remainder.digits.begin(), dividend.digits[i]);
-        remainder.removeLeadingZeros();
-        uint64_t curDigit = 0;
-        while (remainder >= divisor) {
-            remainder -= divisor;
-            ++curDigit;
-        }
-        quotient.digits.insert(quotient.digits.begin(), curDigit);
-    }
-
-    quotient.sign = (sign == other.sign);
-    quotient.removeLeadingZeros();
-    return quotient;
-}
-
-BigInt BigInt::operator%(const BigInt& other) const {
-    return *this - (*this / other) * other;
-}
 
 BigInt BigInt::operator-() const
 {
     BigInt temp(*this); // Создаем копию объекта
     temp.sign = !sign; // Инвертируем знак
     return temp;     // Возвращаем копию с измененным знаком
+}
+
+const BigInt BigInt::operator +() const {
+    return BigInt(*this);
 }
 
 // Реализация присваивания
@@ -258,7 +208,7 @@ bool BigInt::operator<(const BigInt& other) const {
     if (digits.size() != other.digits.size()) {
         return (digits.size() < other.digits.size()) ^ !sign;
     }
-    for (uint64_t i = digits.size() - 1; i >= 0; --i) {
+    for (int64_t i = digits.size() - 1; i >= 0; --i) {
         if (digits[i] != other.digits[i]) {
             return (digits[i] < other.digits[i]) ^ !sign;
         }
@@ -278,15 +228,29 @@ bool BigInt::operator>=(const BigInt& other) const {
     return !(*this < other);
 }
 
-// Реализация ввода/вывода
-std::ostream& operator<<(std::ostream& os, const BigInt& num) {
-    if (!num.sign) {
-        os << '-';
+
+std::ostream& operator <<(std::ostream& os, const BigInt& bi) {
+    if (bi.digits.empty()) os << 0;
+    else {
+        if (bi.sign == false) os << '-';
+        os << bi.digits.back();
+        // следующие числа нам нужно печатать группами по 9 цифр
+        // поэтому сохраним текущий символ-заполнитель, а потом восстановим его
+        char old_fill = os.fill('0');
+        for (int64_t i = static_cast<int64_t>(bi.digits.size()) - 2; i >= 0; --i) {
+            os << std::setw(bi.COUNT_ZERO_IN_CELL) << bi.digits[i];
+        }
+
+        os.fill(old_fill);
     }
-    for (uint64_t i = num.digits.size() - 1; i >= 0; --i) {
-        os << num.digits[i];
-    }
+
     return os;
+}
+
+BigInt::operator std::string() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
 }
 
 std::istream& operator>>(std::istream& is, BigInt& num) {
@@ -312,27 +276,71 @@ BigInt BigInt::abs() const {
     return result;
 }
 
-uint64_t main() {
-    BigInt num1(12345);
-    BigInt num2("9876543210");
 
-    std::cout << "num1: " << num1 << std::endl;
-    std::cout << "num2: " << num2 << std::endl;
+BigInt& BigInt::operator +=(const BigInt& value) {
+    return *this = (*this + value);
+}
 
-    BigInt sum = num1 + num2;
-    std::cout << "sum: " << sum << std::endl;
+BigInt& BigInt::operator -=(const BigInt& value) {
+    return *this = (*this - value);
+}
 
-    BigInt diff = num2 - num1;
-    std::cout << "diff: " << diff << std::endl;
+const BigInt BigInt::operator++() {
+    return (*this += 1ull);
+}
 
-    BigInt product = num1 * num2;
-    std::cout << "product: " << product << std::endl;
+const BigInt BigInt::operator ++(int) {
+    *this += 1ull;
+    return *this - 1ull;
+}
 
-    BigInt quotient = num2 / num1;
-    std::cout << "quotient: " << quotient << std::endl;
+const BigInt BigInt::operator --() {
+    return *this -= 1ull;
+}
 
-    BigInt remainder = num2 % num1;
-    std::cout << "remainder: " << remainder << std::endl;
+const BigInt BigInt::operator --(int) {
+    *this -= 1ull;
+    return *this + 1ull;
+}
 
-    return 0;
+void BigInt::_shift_right() {
+    this->digits.insert(this->digits.begin(), 0ull);
+    this->removeLeadingZeros();
+}
+
+BigInt BigInt::operator/(const BigInt& other) const {
+    // на ноль делить нельзя
+    if (other == 0ull) 
+        throw std::runtime_error("Divide by zero");
+    
+    BigInt result, current;
+    result.digits.resize(this->digits.size());
+    for (int64_t i = static_cast<int64_t>(this->digits.size() - 1); i >= 0; i--) {
+        current._shift_right();
+        current.digits[0] = this->digits[i];
+        current.removeLeadingZeros();
+        uint64_t x = 0, l = 0, r = BigInt::BASE;
+        while (l <= r) {
+            uint64_t m = (l + r) / 2;
+            BigInt t = (*this) * m;
+            if (t <= current) {
+                x = m;
+                l = m + 1;
+            }
+            else r = m - 1;
+        }
+
+        result.digits[i] = x;
+        current = current - (*this) * x;
+    }
+
+    result.sign = this->sign != other.sign;
+    result.removeLeadingZeros();
+    return result;
+}
+
+BigInt BigInt::operator%(const BigInt& right) const {
+    BigInt result = (*this) - ((*this) / right) * right;
+    if (!result.sign) result += right;
+    return result;
 }
