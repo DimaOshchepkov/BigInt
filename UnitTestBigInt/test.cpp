@@ -1,9 +1,12 @@
 #include "pch.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+#include <boost/multiprecision/cpp_int.hpp>
 #include "../BigInt/BigInt.h" // Подключите ваш файл с классом BigInt
 
 using std::uint64_t;
+using namespace boost::multiprecision;
+
 // Тесты конструкторов
 TEST(BigIntConstructors, DefaultConstructor) {
 	BigInt a;
@@ -67,54 +70,74 @@ TEST(BigIntArithmetic, Addition) {
 	BigInt a("12345");
 	BigInt b("54321");
 	BigInt c = a + b;
-	EXPECT_EQ(static_cast<std::string>(c), "66666");
+
+	cpp_int a_boost("12345");
+	cpp_int b_boost("54321");
+	cpp_int c_boost = a_boost + b_boost;
+
+	EXPECT_EQ(static_cast<std::string>(c), c_boost.str());
 }
 
 TEST(BigIntArithmetic, Addition2) {
-	EXPECT_TRUE(BigInt("0") + BigInt("0") == BigInt("0"));
-	EXPECT_TRUE(BigInt("999") + BigInt("1") == BigInt("1000"));
-	EXPECT_TRUE(BigInt("-10") + BigInt("5") == BigInt("-5"));
-	EXPECT_TRUE(BigInt("100") + BigInt("-100") == BigInt("0"));
-	EXPECT_TRUE(BigInt("12345678901234567890") + BigInt("98765432109876543210") == BigInt("111111111111111111100"));
+	EXPECT_EQ(static_cast<std::string>(BigInt("0") + BigInt("0")),
+		(cpp_int("0") + cpp_int("0")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("999") + BigInt("1")),
+		(cpp_int("999") + cpp_int("1")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("-10") + BigInt("5")),
+		(cpp_int("-10") + cpp_int("5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("100") + BigInt("-100")),
+		(cpp_int("100") + cpp_int("-100")).str());
+
+	EXPECT_EQ(static_cast<std::string>(BigInt("12345678901234567890") + BigInt("98765432109876543210")),
+		(cpp_int("12345678901234567890") + cpp_int("98765432109876543210")).str());
+	auto res = BigInt("1000000000") + BigInt("900000000");
+	EXPECT_EQ(static_cast<std::string>(BigInt("1000000000") + BigInt("900000000")),
+		(cpp_int("1000000000") + cpp_int("900000000")).str());
 }
 
 TEST(BigIntArithmetic, Subtraction) {
-	EXPECT_TRUE(BigInt("10") - BigInt("5") == BigInt("5"));
-	EXPECT_TRUE(BigInt("5") - BigInt("10") == BigInt("-5"));
-	EXPECT_TRUE(BigInt("0") - BigInt("10") == BigInt("-10"));
-	EXPECT_TRUE(BigInt("100") - BigInt("100") == BigInt("0"));
-	EXPECT_TRUE(BigInt("-10") - BigInt("-5") == BigInt("-5"));
-	EXPECT_TRUE(BigInt("-5") - BigInt("-10") == BigInt("5"));
-	EXPECT_TRUE(BigInt("12345678901234567890") - BigInt("98765432109876543210") == BigInt("-86419753208641975320"));
+	EXPECT_EQ(static_cast<std::string>(BigInt("10") - BigInt("5")), (cpp_int("10") - cpp_int("5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("5") - BigInt("10")), (cpp_int("5") - cpp_int("10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("0") - BigInt("10")), (cpp_int("0") - cpp_int("10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("100") - BigInt("100")), (cpp_int("100") - cpp_int("100")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("-10") - BigInt("-5")), (cpp_int("-10") - cpp_int("-5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("-5") - BigInt("-10")), (cpp_int("-5") - cpp_int("-10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("12345678901234567890") - BigInt("98765432109876543210")), (cpp_int("12345678901234567890") - cpp_int("98765432109876543210")).str());
 }
 
 TEST(BigIntArithmetic, Multiplication) {
-	EXPECT_TRUE(BigInt("10") * BigInt("5") == BigInt("50"));
-	EXPECT_TRUE(BigInt("5") * BigInt("10") == BigInt("50"));
-	EXPECT_TRUE(BigInt("0") * BigInt("10") == BigInt("0"));
-	EXPECT_TRUE(BigInt("10") * BigInt("0") == BigInt("0"));
-	EXPECT_TRUE(BigInt("-10") * BigInt("5") == BigInt("-50"));
-	EXPECT_TRUE(BigInt("10") * BigInt("-5") == BigInt("-50"));
-	EXPECT_TRUE(BigInt("-10") * BigInt("-5") == BigInt("50"));
-	EXPECT_TRUE(BigInt("1234") * BigInt("5678") == BigInt("7006652"));
+	EXPECT_EQ(static_cast<std::string>(BigInt("10") * BigInt("5")), (cpp_int("10") * cpp_int("5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("5") * BigInt("10")), (cpp_int("5") * cpp_int("10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("0") * BigInt("10")), (cpp_int("0") * cpp_int("10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("10") * BigInt("0")), (cpp_int("10") * cpp_int("0")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("-10") * BigInt("5")), (cpp_int("-10") * cpp_int("5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("10") * BigInt("-5")), (cpp_int("10") * cpp_int("-5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("-10") * BigInt("-5")), (cpp_int("-10") * cpp_int("-5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("1234") * BigInt("5678")), (cpp_int("1234") * cpp_int("5678")).str());
 }
 
 TEST(BigIntArithmetic, Division) {
-	EXPECT_TRUE(BigInt("10") / BigInt("5") == BigInt("2"));
-	EXPECT_TRUE(BigInt("11") / BigInt("5") == BigInt("2"));
-	EXPECT_TRUE(BigInt("0") / BigInt("10") == BigInt("0"));
-	EXPECT_TRUE(BigInt("100") / BigInt("-10") == BigInt("-10"));
-	EXPECT_TRUE(BigInt("-100") / BigInt("10") == BigInt("-10"));
-	EXPECT_TRUE(BigInt("-100") / BigInt("-10") == BigInt("10"));
-	EXPECT_TRUE(BigInt("7006652") / BigInt("1234") == BigInt("5678"));
 
-	// Дополнительные проверки для деления:
+	EXPECT_EQ(static_cast<std::string>(BigInt("10") / BigInt("5")), (cpp_int("10") / cpp_int("5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("11") / BigInt("5")), (cpp_int("11") / cpp_int("5")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("0") / BigInt("10")), (cpp_int("0") / cpp_int("10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("100") / BigInt("-10")), (cpp_int("100") / cpp_int("-10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("-100") / BigInt("10")), (cpp_int("-100") / cpp_int("10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("-100") / BigInt("-10")), (cpp_int("-100") / cpp_int("-10")).str());
+	EXPECT_EQ(static_cast<std::string>(BigInt("7006652") / BigInt("1234")), (cpp_int("7006652") / cpp_int("1234")).str());
+
 	BigInt a("100");
 	BigInt b("3");
 	BigInt q = a / b;
 	BigInt r = a % b;
-	EXPECT_TRUE(q == BigInt("33"));
-	EXPECT_TRUE(r == BigInt("1"));
+
+	cpp_int a_boost("100");
+	cpp_int b_boost("3");
+	cpp_int q_boost = a_boost / b_boost;
+	cpp_int r_boost = a_boost % b_boost;
+
+	EXPECT_EQ(static_cast<std::string>(q), q_boost.str());
+	EXPECT_EQ(static_cast<std::string>(r), r_boost.str());
 }
 // ... (добавьте тесты для -, *, /, %, ++, --, +=, -=)
 

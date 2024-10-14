@@ -9,7 +9,6 @@ BigInt::BigInt() : sign(true), digits(1, 0) {}
 
 
 BigInt::BigInt(int64_t l) {
-    BASE = (uint64_t)std::pow(10, COUNT_ZERO_IN_CELL);
     if (l < 0) { this->sign = false; l = -l; }
     else this->sign = true;
     do {
@@ -19,7 +18,6 @@ BigInt::BigInt(int64_t l) {
 }
 
 BigInt::BigInt(uint64_t l) {
-    BASE = (uint64_t)std::pow(10, COUNT_ZERO_IN_CELL);
     this->sign = true;
     do {
         this->digits.push_back(l % BigInt::BASE);
@@ -27,8 +25,7 @@ BigInt::BigInt(uint64_t l) {
     } while (l != 0);
 }
 
-BigInt::BigInt(std::string_view str) {
-    BASE = (uint64_t)std::pow(10, COUNT_ZERO_IN_CELL);
+BigInt::BigInt(std::string str) {
     if (str.length() == 0) {
         this->sign = true;
     }
@@ -41,7 +38,7 @@ BigInt::BigInt(std::string_view str) {
             this->sign = true;
         }
 
-        for (long long i = str.length(); i >= 0; i -= COUNT_ZERO_IN_CELL) {
+        for (long long i = str.length(); i > 0; i -= COUNT_ZERO_IN_CELL) {
             if (i < COUNT_ZERO_IN_CELL)
                 this->digits.push_back(std::stoi(std::string(str.substr(0, i))));
             else
@@ -54,45 +51,12 @@ BigInt::BigInt(std::string_view str) {
 
 BigInt::BigInt(const BigInt& other) : digits(other.digits), sign(other.sign) 
 {
-    BASE = (uint64_t)std::pow(10, COUNT_ZERO_IN_CELL);
-}
+} 
 
-BigInt::BigInt(BigInt&& other) : digits(std::move(other.digits)), sign(std::move(sign))
+BigInt::BigInt(BigInt&& other) noexcept : digits(std::move(other.digits)), sign(std::move(other.sign))
 {
-    BASE = (uint64_t)std::pow(10, COUNT_ZERO_IN_CELL);
 }
 
-bool BigInt::less_by_module(const BigInt& other) const
-{
-    return std::equal(digits.begin(), digits.end(), other.digits.begin());
-}
-
-BigInt BigInt::diff_from_greater_to_less(const BigInt& y) const
-{
-    BigInt x(*this);
-    auto length = std::max(this->digits.size(), y.digits.size());
-    BigInt z(length);
-    for (int ix = 0; ix < (length - 1); ix++) // проход по всем разрядам числа, начиная с последнего, не доходя до первого
-    {
-        if (ix < (length - 1)) // если текущий разряд чисел не первый
-        {
-            x.digits[ix + 1]--; // в следующуем разряде большего числа занимаем 1.
-            z.digits[ix] += 10 + x.digits[ix]; // в ответ записываем сумму значения текущего разряда большего числа и 10-ти
-
-        }
-        else  // если текущий разряд чисел - первый
-            z.digits[ix] += x.digits[ix]; // в ответ суммируем значение текущего разряда большего числа
-
-        z.digits[ix] -= y.digits[ix]; // вычитаем значение текущего разряда меньшего числа
-
-        if (z.digits[ix] / 10 > 0) // если значение в текущем разряде двухразрядное
-        {
-            z.digits[ix + 1]++; // переносим единицу в старший разряд
-            z.digits[ix] %= 10; // в текущем разряде отсекаем ее
-        }
-    }
-    return z;
-}
 
 
 uint64_t BigInt::extract_number(std::string_view number, int pos, int count) {
@@ -109,55 +73,83 @@ uint64_t BigInt::extract_number(std::string_view number, int pos, int count) {
 
 // Реализация операторов
 BigInt BigInt::operator+(const BigInt& other) const {
-    if (sign == other.sign) { // Если знаки одинаковые
-        auto maxSize = std::max(digits.size(), other.digits.size()) + 1;
-        BigInt result;
-        result.digits.resize(maxSize);
-        for (int i = 0; i <  maxSize - 1; i++) {
-            result.digits[i] = this->digits[i] + other.digits[i];
-            result.digits[i + 1] += result.digits[i] / BASE;
-            result.digits[i] %= BASE;
-        }
-        if (result.digits.back() == 0) {
-            result.digits.pop_back();
-        }
+    if (!this->sign) {
+        if (!other.sign) return -(-*this + (-other));
+        else return other - (-*this);
+    }
+    else if (!other.sign) return *this - (-other);
 
-        return result;
+    auto maxSize = std::max(digits.size(), other.digits.size()) + 1;
+    BigInt result;
+    result.digits.resize(maxSize);
+    uint64_t i = 0;
+    for (; i < std::min(digits.size(), other.digits.size()); i++) {
+        result.digits[i] += this->digits[i] + other.digits[i];
+        result.digits[i + 1] += result.digits[i] / BASE;
+        result.digits[i] %= BASE;
     }
-    else { // Если знаки разные
-        if (sign) { // this положительное
-            return *this - (-other);
-        }
-        else { // this отрицательное
-            return other - (-*this);
-        }
+    for (; i < this->digits.size(); i++) {
+        result.digits[i] += this->digits[i];
+        result.digits[i + 1] += result.digits[i] / BASE;
+        result.digits[i] %= BASE;
     }
+    for (; i < other.digits.size(); i++) {
+        result.digits[i] += other.digits[i];
+        result.digits[i + 1] += result.digits[i] / BASE;
+        result.digits[i] %= BASE;
+    }
+    if (result.digits.back() == 0) {
+        result.digits.pop_back();
+    }
+
+    return result;
+
 }
 
 
 BigInt BigInt::operator-(const BigInt& other) const {
-    if (other.sign != this->sign ) {
-        return *this + other;
+    if (!other.sign) return *this + (-other);
+    else if (!this->sign) return -(-(*this) + other);
+    else if (*this < other) return -(other - *this);
+    BigInt left(*this);
+    for (uint64_t i = 0; i < other.digits.size(); ++i) {
+        if (left.digits[i] < other.digits[i]) {
+            uint64_t pos_not_zero = i + 1;
+            while (left.digits[pos_not_zero] == 0) {
+                left.digits[pos_not_zero] = BigInt::BASE - 1;
+                pos_not_zero++;
+            }
+            left.digits[pos_not_zero]--;
+            left.digits[i] = left.digits[i] + BigInt::BASE - other.digits[i];
+        }
+        else {
+            left.digits[i] -= other.digits[i];
+        }
+
     }
-    if (this->less_by_module(other)) {
-        return other.diff_from_greater_to_less(*this);
-    }
-    return this->diff_from_greater_to_less(other);
+
+    left.removeLeadingZeros();
+    return left;
 }
 
 BigInt BigInt::operator*(const BigInt& other) const {
     auto length = this->digits.size() + other.digits.size() + 1;
-    BigInt res(length);
-    for (int ix = 0; ix < this->digits.size(); ix++)
-        for (int jx = 0; jx < other.digits.size(); jx++)
-            res.digits[ix + jx - 1] += this->digits[ix] * other.digits[jx];
+    BigInt res;
+    res.digits.resize(length);
+    for (int ix = 0; ix < this->digits.size(); ix++) {
+        for (int jx = 0; jx < other.digits.size(); jx++) {
+            res.digits[ix + jx] += this->digits[ix] * other.digits[jx];
+            uint64_t carry_index = 1;
+            while (res.digits[ix + jx + carry_index - 1] > BigInt::BASE) {
+                res.digits[ix + jx + carry_index] += res.digits[ix + jx + carry_index - 1] / BigInt::BASE;
+                res.digits[ix + jx + carry_index - 1] %= BigInt::BASE;
+                carry_index++;
+            }
 
-    for (int ix = 0; ix < length; ix++)
-    {
-        res.digits[ix + 1] += res.digits[ix] / BASE;
-        res.digits[ix] %= BASE;
+        }
     }
 
+    res.sign = !(this->sign ^ other.sign);
     res.removeLeadingZeros();
     return res;
 }
@@ -175,26 +167,24 @@ const BigInt BigInt::operator +() const {
     return BigInt(*this);
 }
 
-// Реализация присваивания
-BigInt& BigInt::operator=(const BigInt& other) {
-    BigInt temp(other); // Создаем временный объект через конструктор копирования
-    std::swap(*this, temp); // Обмениваем данные с временным объектом
+BigInt& BigInt::operator=(BigInt& other) {  
+    std::swap(digits, other.digits);
+    std::swap(sign, other.sign);
     return *this;
 }
 
-BigInt& BigInt::operator=(BigInt&& other)
+BigInt& BigInt::operator=(BigInt&& other) noexcept
 {
-    if (this != &other) {
-        BigInt temp(std::move(other)); // Создаем временный объект через конструктор перемещения
-        std::swap(*this, temp); // Обмениваем данные с временным объектом
-    }
+    digits = std::move(other.digits);
+    sign = std::move(other.sign);
     return *this;
 }
+
 
 
 // Реализация сравнения
 bool BigInt::operator==(const BigInt& other) const {
-    return (sign == other.sign) && (std::equal(digits.begin(), digits.end(), other.digits.begin()));
+    return (sign == other.sign) && (digits ==  other.digits);
 }
 
 bool BigInt::operator!=(const BigInt& other) const {
@@ -206,11 +196,17 @@ bool BigInt::operator<(const BigInt& other) const {
         return sign < other.sign;
     }
     if (digits.size() != other.digits.size()) {
-        return (digits.size() < other.digits.size()) ^ !sign;
+        if (sign)
+            return (digits.size() < other.digits.size());
+        else
+            return (digits.size() > other.digits.size());
     }
     for (int64_t i = digits.size() - 1; i >= 0; --i) {
         if (digits[i] != other.digits[i]) {
-            return (digits[i] < other.digits[i]) ^ !sign;
+            if (sign)
+                return (digits[i] < other.digits[i]);
+            else
+                return (digits[i] > other.digits[i]);
         }
     }
     return false;
@@ -270,10 +266,8 @@ void BigInt::removeLeadingZeros() {
     }
 }
 
-BigInt BigInt::abs() const {
-    BigInt result = *this;
-    result.sign = true;
-    return result;
+void BigInt::abs() {
+    this->sign = true;
 }
 
 
@@ -310,19 +304,20 @@ void BigInt::_shift_right() {
 
 BigInt BigInt::operator/(const BigInt& other) const {
     // на ноль делить нельзя
-    if (other == 0ull) 
+    if (other == 0ull)
         throw std::runtime_error("Divide by zero");
-    
+
     BigInt result, current;
     result.digits.resize(this->digits.size());
     for (int64_t i = static_cast<int64_t>(this->digits.size() - 1); i >= 0; i--) {
         current._shift_right();
         current.digits[0] = this->digits[i];
         current.removeLeadingZeros();
-        uint64_t x = 0, l = 0, r = BigInt::BASE;
+        int64_t x = 0, l = 0, r = BigInt::BASE;
         while (l <= r) {
-            uint64_t m = (l + r) / 2;
-            BigInt t = (*this) * m;
+            int64_t m = (l + r) / 2;
+            BigInt t = other * m;
+            t.abs();
             if (t <= current) {
                 x = m;
                 l = m + 1;
@@ -331,16 +326,18 @@ BigInt BigInt::operator/(const BigInt& other) const {
         }
 
         result.digits[i] = x;
-        current = current - (*this) * x;
+        current = current - other * BigInt(x);
     }
 
-    result.sign = this->sign != other.sign;
+    result.sign = (this->sign == other.sign);
     result.removeLeadingZeros();
     return result;
 }
 
 BigInt BigInt::operator%(const BigInt& right) const {
-    BigInt result = (*this) - ((*this) / right) * right;
+    auto a = (*this) / right;
+    auto b = ((*this) / right) * right;
+    BigInt result = *this - b;
     if (!result.sign) result += right;
     return result;
 }

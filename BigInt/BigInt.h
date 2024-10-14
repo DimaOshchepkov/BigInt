@@ -15,11 +15,10 @@ public:
     BigInt(); // Конструктор по умолчанию
     BigInt(int64_t l);
     BigInt(uint64_t l); // Конструктор из uint64_t
-    BigInt(std::string_view str); // Конструктор из строки
+    BigInt(std::string str); // Конструктор из строки
     BigInt(const BigInt& other); // Конструктор копирования
-    BigInt(BigInt&& other);
+    BigInt(BigInt&& other) noexcept;
 
-    bool less_by_module(const BigInt& other) const;
 
     // Базовые операции
     BigInt operator+(const BigInt& other) const;
@@ -32,8 +31,8 @@ public:
     const BigInt operator +() const;
 
     // Присваивание
-    BigInt& operator=(const BigInt& other);
-    BigInt& operator=(BigInt&& other);
+    BigInt& operator=(BigInt& other);
+    BigInt& operator=(BigInt&& other) noexcept;
     BigInt& operator -=(const BigInt& value);
     BigInt& operator +=(const BigInt& value);
 
@@ -57,7 +56,6 @@ public:
 
     int COUNT_ZERO_IN_CELL = 9;
 private:
-    BigInt diff_from_greater_to_less(const BigInt& other) const;
     uint64_t extract_number(std::string_view number, int pos, int count);
 
     std::vector<uint64_t> digits; // Вектор для хранения чисел
@@ -67,5 +65,5 @@ private:
     // Вспомогательные функции
     void removeLeadingZeros();
     void _shift_right();
-    BigInt abs() const;
+    void abs();
 };
