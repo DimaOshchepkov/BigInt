@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <boost/multiprecision/cpp_int.hpp>
 #include "../BigInt/BigInt.h" // Подключите ваш файл с классом BigInt
 
@@ -126,6 +127,7 @@ TEST(BigIntArithmetic, Division) {
 	EXPECT_EQ(static_cast<std::string>(BigInt("-100") / BigInt("-10")), (cpp_int("-100") / cpp_int("-10")).str());
 	EXPECT_EQ(static_cast<std::string>(BigInt("7006652") / BigInt("1234")), (cpp_int("7006652") / cpp_int("1234")).str());
 
+
 	BigInt a("100");
 	BigInt b("3");
 	BigInt q = a / b;
@@ -139,7 +141,35 @@ TEST(BigIntArithmetic, Division) {
 	EXPECT_EQ(static_cast<std::string>(q), q_boost.str());
 	EXPECT_EQ(static_cast<std::string>(r), r_boost.str());
 }
-// ... (добавьте тесты для -, *, /, %, ++, --, +=, -=)
+
+TEST(BigIntArithmetic, Module) {
+
+	EXPECT_EQ(static_cast<std::string>(BigInt("1235654345434544543456543454345445454545654345") % BigInt("10")), "5");
+	EXPECT_EQ(static_cast<std::string>(BigInt("1000000000") % BigInt("10")), "0");
+	EXPECT_EQ(static_cast<std::string>(BigInt("123456789") % BigInt("3")), "0");
+}
+
+TEST(BigIntArithmetic, Pow) {
+
+	auto pow = 1000;
+	auto powered_ten_str = BigInt(10ull).pow(pow).str();
+	EXPECT_EQ(std::count(powered_ten_str.begin(), powered_ten_str.end(), '0'), pow);
+
+	// Базовые случаи
+	ASSERT_EQ(BigInt(0ull).pow(10ull).str(), "0");
+	ASSERT_EQ(BigInt(10ull).pow(0ull).str(), "1");
+	ASSERT_EQ(BigInt(2ull).pow(1ull).str(), "2");
+
+	// Положительные степени
+	ASSERT_EQ(BigInt(2ull).pow(3ull).str(), "8");
+	ASSERT_EQ(BigInt(5ull).pow(4ull).str(), "625");
+	ASSERT_EQ(BigInt(10ull).pow(5ull).str(), "100000");
+
+	// Большие числа
+	ASSERT_EQ(BigInt(2ull).pow(32).str(), "4294967296"); // 2^32
+	auto a = BigInt("12345678901234567890").pow(2).str();
+	ASSERT_EQ(a.substr(a.size() - 5, 5), "52100");
+}
 
 // Тесты ввода/вывода
 TEST(BigIntIO, Output) {

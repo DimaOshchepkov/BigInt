@@ -249,6 +249,12 @@ BigInt::operator std::string() const {
     return ss.str();
 }
 
+std::string BigInt::str() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
+}
+
 std::istream& operator>>(std::istream& is, BigInt& num) {
     std::string str;
     is >> str;
@@ -340,4 +346,21 @@ BigInt BigInt::operator%(const BigInt& right) const {
     BigInt result = *this - b;
     if (!result.sign) result += right;
     return result;
+}
+
+BigInt _pow(const BigInt& base, std::uint32_t n) {
+    if (n == 0) {
+        return BigInt(1ull);
+    }
+    else if (n % 2 == 0) {
+        return _pow(base * base, n / 2);
+    }
+    else if (n % 2 == 1) {
+        return base * _pow(base * base, (n - 1) / 2);
+    }
+    return BigInt("-1");
+}
+
+BigInt BigInt::pow(std::uint32_t p) const {
+    return _pow(*this, p);
 }

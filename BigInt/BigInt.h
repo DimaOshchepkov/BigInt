@@ -26,6 +26,7 @@ public:
     BigInt operator*(const BigInt& other) const;
     BigInt operator%(const BigInt& other) const;
     BigInt operator/(const BigInt& other) const;
+    BigInt pow(std::uint32_t p) const;
 
     BigInt operator-() const;
     const BigInt operator +() const;
@@ -53,6 +54,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const BigInt& num);
     friend std::istream& operator>>(std::istream& is, BigInt& num);
     operator std::string() const;
+    std::string str() const;
 
     int COUNT_ZERO_IN_CELL = 9;
 private:
